@@ -1,170 +1,363 @@
+/* ===============================
+   GLOBAL DATA
+================================ */
 
-let portfolio=[]
+let portfolio = []
 
-function initChart(){
-new TradingView.widget({
-symbol:"NSE:RELIANCE",
-interval:"D",
-container_id:"tvchart",
-width:"100%",
-height:400
-})
-}
-initChart()
+let sectorChart = null
+
+
+/* ===============================
+   PRICE FETCH FUNCTION
+   (NSE STOCKS)
+================================ */
 
 async function getPrice(symbol){
 
-let url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}.NS`
+    try{
 
-let res=await fetch(url)
-let data=await res.json()
+        symbol = symbol.trim().toUpperCase()
 
-return data.quoteResponse.result[0].regularMarketPrice
+        let url =
+        `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}.NS`
+
+        let res = await fetch(url)
+
+        let data = await res.json()
+
+        return data.chart.result[0].meta.regularMarketPrice
+
+    }
+
+    catch(e){
+
+        console.log("Price fetch failed", e)
+
+        return 0
+
+    }
 
 }
+
+
+/* ===============================
+   ADD STOCK MANUALLY
+================================ */
+
+async function addStock(){
+
+    let symbol =
+    document.getElementById("symbol").value
+
+    let qty =
+    parseFloat(document.getElementById("qty").value)
+
+    let buyPrice =
+    parseFloat(document.getElementById("price").value)
+
+    let current = await getPrice(symbol)
+
+    let pnl = (current - buyPrice) * qty
+
+    portfolio.push({
+
+        symbol,
+        qty,
+        buyPrice,
+        current,
+        pnl
+
+    })
+
+    renderPortfolio()
+
+}
+
+
+/* ===============================
+   PORTFOLIO TABLE
+================================ */
 
 function renderPortfolio(){
 
-let table=document.getElementById("portfolioTable")
+    let table =
+    document.getElementById("portfolioTable")
 
-table.innerHTML="<tr><th>Symbol</th><th>Qty</th><th>Buy</th><th>Current</th><th>P&L</th></tr>"
+    table.innerHTML = `
 
-portfolio.forEach(p=>{
+    <tr>
+        <th>Symbol</th>
+        <th>Qty</th>
+        <th>Buy Price</th>
+        <th>Current</th>
+        <th>P&L</th>
+    </tr>
 
-table.innerHTML+=`
+    `
 
-<tr>
-<td>${p.symbol}</td>
-<td>${p.qty}</td>
-<td>${p.price}</td>
-<td>${p.current}</td>
-<td>${p.pnl}</td>
-</tr>
+    portfolio.forEach(p => {
 
-`
+        table.innerHTML += `
 
-})
+        <tr>
+            <td>${p.symbol}</td>
+            <td>${p.qty}</td>
+            <td>${p.buyPrice}</td>
+            <td>${p.current}</td>
+            <td>${p.pnl.toFixed(2)}</td>
+        </tr>
+
+        `
+
+    })
+
+    updateSectorChart()
 
 }
+
+
+/* ===============================
+   EXCEL IMPORT
+================================ */
 
 async function importExcel(){
 
-let file=document.getElementById("excelFile").files[0]
+    let file =
+    document.getElementById("excelFile").files[0]
 
-let data=await file.arrayBuffer()
+    if(!file){
 
-let workbook=XLSX.read(data)
+        alert("Select Excel file")
 
-let sheet=workbook.Sheets[workbook.SheetNames[0]]
+        return
 
-let rows=XLSX.utils.sheet_to_json(sheet)
+    }
 
-for(let r of rows){
+    let data = await file.arrayBuffer()
 
-let price=await getPrice(r["Script name"])
+    let workbook = XLSX.read(data)
 
-let pnl=(price-r["Price"])*r["Quantity"]
+    let sheet =
+    workbook.Sheets[workbook.SheetNames[0]]
 
-portfolio.push({
-symbol:r["Script name"],
-qty:r["Quantity"],
-price:r["Price"],
-current:price,
-pnl:pnl
-})
+    let rows =
+    XLSX.utils.sheet_to_json(sheet)
 
-}
+    for(let r of rows){
 
-renderPortfolio()
+        let symbol =
+        r["Script name"]
 
-}
+        let qty =
+        Number(r["Quantity"])
 
-function buildSectorChart(){
+        let price =
+        Number(r["Price"])
 
-let sectors={}
+        let current =
+        await getPrice(symbol)
 
-portfolio.forEach(p=>{
+        let pnl =
+        (current - price) * qty
 
-let sector="Tech"
+        portfolio.push({
 
-if(!sectors[sector]) sectors[sector]=0
+            symbol,
+            qty,
+            buyPrice: price,
+            current,
+            pnl
 
-sectors[sector]+=p.qty*p.price
+        })
 
-})
+    }
 
-new Chart(document.getElementById("sectorChart"),{
-
-type:"pie",
-data:{
-labels:Object.keys(sectors),
-datasets:[{data:Object.values(sectors)}]
-}
-
-})
+    renderPortfolio()
 
 }
 
-function runMonteCarlo(){
 
-let simulations=1000
+/* ===============================
+   SECTOR ALLOCATION
+================================ */
 
-let start=100
+function updateSectorChart(){
 
-let results=[]
+    let sectorMap = {}
 
-for(let i=0;i<simulations;i++){
+    portfolio.forEach(p => {
 
-let price=start
+        let sector = "Stocks"
 
-for(let d=0;d<252;d++){
+        if(!sectorMap[sector])
+            sectorMap[sector] = 0
 
-let shock=(Math.random()-0.5)/10
+        sectorMap[sector] +=
+        p.qty * p.buyPrice
 
-price=price*(1+shock)
+    })
+
+    let labels =
+    Object.keys(sectorMap)
+
+    let values =
+    Object.values(sectorMap)
+
+    if(sectorChart){
+
+        sectorChart.destroy()
+
+    }
+
+    sectorChart = new Chart(
+
+        document.getElementById("sectorChart"),
+
+        {
+
+            type:"pie",
+
+            data:{
+
+                labels:labels,
+
+                datasets:[{
+
+                    data:values
+
+                }]
+
+            }
+
+        }
+
+    )
 
 }
 
-results.push(price)
 
-}
-
-let avg=results.reduce((a,b)=>a+b)/results.length
-
-document.getElementById("riskOutput").innerText="Expected value: "+avg
-
-}
-
-function runAI(){
-
-let signals=[]
-
-portfolio.forEach(p=>{
-
-let signal=Math.random()>0.5?"BUY":"SELL"
-
-signals.push(p.symbol+" : "+signal)
-
-})
-
-document.getElementById("aiOutput").innerText=signals.join("\n")
-
-}
+/* ===============================
+   NSE SCREENER
+================================ */
 
 async function loadScreener(){
 
-let stocks=["RELIANCE","TCS","INFY","HDFCBANK"]
+    let stocks = [
 
-let output=[]
+        "RELIANCE",
+        "TCS",
+        "INFY",
+        "HDFCBANK",
+        "ICICIBANK",
+        "ITC"
 
-for(let s of stocks){
+    ]
 
-let price=await getPrice(s)
+    let output = []
 
-output.push(s+" : "+price)
+    for(let s of stocks){
+
+        let price =
+        await getPrice(s)
+
+        output.push(
+
+            `${s} : ₹${price}`
+
+        )
+
+    }
+
+    document.getElementById("screener")
+    .innerText = output.join("\\n")
 
 }
 
-document.getElementById("screener").innerText=output.join("\n")
+
+/* ===============================
+   MONTE CARLO RISK
+================================ */
+
+function runMonteCarlo(){
+
+    let simulations = 1000
+
+    let start = 100
+
+    let results = []
+
+    for(let i=0;i<simulations;i++){
+
+        let price = start
+
+        for(let d=0; d<252; d++){
+
+            let shock =
+            (Math.random() - 0.5) / 10
+
+            price = price * (1 + shock)
+
+        }
+
+        results.push(price)
+
+    }
+
+    let avg =
+    results.reduce((a,b)=>a+b)
+    / results.length
+
+    document.getElementById("riskOutput")
+    .innerText =
+    "Expected Portfolio Value: "
+    + avg.toFixed(2)
+
+}
+
+
+/* ===============================
+   AI SIGNAL GENERATOR
+================================ */
+
+function runAI(){
+
+    let signals = []
+
+    portfolio.forEach(p => {
+
+        let score =
+        Math.random()
+
+        let signal =
+        score > 0.6
+        ? "BUY"
+        : score < 0.4
+        ? "SELL"
+        : "HOLD"
+
+        signals.push(
+
+            `${p.symbol} : ${signal}`
+
+        )
+
+    })
+
+    document.getElementById("aiOutput")
+    .innerText =
+    signals.join("\\n")
+
+}
+
+
+/* ===============================
+   CLEAR PORTFOLIO
+================================ */
+
+function clearPortfolio(){
+
+    portfolio = []
+
+    renderPortfolio()
 
 }
