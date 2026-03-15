@@ -12,18 +12,21 @@ height:400
 }
 initChart()
 
-async function getPrice(symbol){
+async function getPriceGoogle(symbol){
 
-let url=`https://query2.finance.yahoo.com/v8/finance/chart/${symbol}.NS`
+let url = `https://www.google.com/finance/quote/${symbol}:NSE`
 
-let res=await fetch(url)
+let res = await fetch(url)
+let html = await res.text()
 
-let data=await res.json()
+let price = html.match(/data-last-price="([^"]+)"/)
 
-return data.chart.result[0].meta.regularMarketPrice
-
+if(price){
+    return parseFloat(price[1])
 }
 
+return null
+}
 function renderPortfolio(){
 
 let table=document.getElementById("portfolioTable")
