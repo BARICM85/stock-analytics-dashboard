@@ -14,12 +14,13 @@ initChart()
 
 async function getPrice(symbol){
 
-let url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}.NS`
+let url=`https://query2.finance.yahoo.com/v8/finance/chart/${symbol}.NS`
 
 let res=await fetch(url)
+
 let data=await res.json()
 
-return data.quoteResponse.result[0].regularMarketPrice
+return data.chart.result[0].meta.regularMarketPrice
 
 }
 
