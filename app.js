@@ -92,6 +92,59 @@ renderPortfolio()
 
 }
 
+function handleExcelUpload() {
+    const fileInput = document.getElementById("excelFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please select a file.");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        const json = XLSX.utils.sheet_to_json(sheet);
+
+        portfolio = loadPortfolio();
+
+        json.forEach(row => {
+            const name = String(row.name || "").toUpperCase();
+            const quantity = parseFloat(row.quantity);
+            const price = parseFloat(row.price);
+
+            if (!name || isNaN(quantity) || isNaN(price)) return;
+
+            const existing = portfolio.find(s => s.name === name);
+
+            if (existing) {
+                existing.quantity += quantity;
+                existing.price = price;
+            } else {
+                portfolio.push({
+                    name,
+                    symbol: name + ".NS",
+                    quantity,
+                    price,
+                    currentPrice: price
+                });
+            }
+        });
+
+        savePortfolio(portfolio);
+        alert("Excel uploaded successfully!");
+        showPortfolio();
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
 function updateSector(){
 
 let sectors={}
