@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PRO Stock Analytics Platform</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://s3.tradingview.com/tv.js"></script>
+
+</head>
+
+<body>
+
+<h1>PRO Stock Analytics Platform</h1>
+
+<div class="grid">
+
+<div class="card">
+<h2>TradingView Chart</h2>
+<div id="chart"></div>
+</div>
+
+<div class="card">
+<h2>Import Portfolio</h2>
+<input type="file" id="excelFile">
+<button onclick="importExcel()">Import</button>
+</div>
+
+<div class="card">
+<h2>Portfolio</h2>
+<table id="portfolioTable"></table>
+</div>
+
+<div class="card">
+<h2>Sector Allocation</h2>
+<canvas id="sectorChart"></canvas>
+</div>
+
+<div class="card">
+<h2>Screener</h2>
+<button onclick="runScreener()">Run</button>
+<pre id="screener"></pre>
+</div>
+
+<div class="card">
+<h2>Monte Carlo</h2>
+<button onclick="runMonteCarlo()">Simulate</button>
+<pre id="risk"></pre>
+</div>
+
+<div class="card">
+<h2>AI Signals</h2>
+<button onclick="runAI()">Generate</button>
+<pre id="ai"></pre>
+</div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
